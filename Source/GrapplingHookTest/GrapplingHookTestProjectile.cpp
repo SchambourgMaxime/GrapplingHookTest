@@ -9,7 +9,6 @@ AGrapplingHookTestProjectile::AGrapplingHookTestProjectile()
 	// Use a sphere as a simple collision representation
 	CollisionComp = CreateDefaultSubobject<USphereComponent>(TEXT("SphereComp"));
 	CollisionComp->InitSphereRadius(5.0f);
-	CollisionComp->BodyInstance.SetCollisionProfileName("Projectile");
 	CollisionComp->OnComponentHit.AddDynamic(this, &AGrapplingHookTestProjectile::OnHit);		// set up a notification for when this component hits something blocking
 
 	// Players can't walk on it
@@ -21,9 +20,6 @@ AGrapplingHookTestProjectile::AGrapplingHookTestProjectile()
 
 	// Use a ProjectileMovementComponent to govern this projectile's movement
 	ProjectileMovement = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileComp"));
-	ProjectileMovement->UpdatedComponent = CollisionComp;
-	ProjectileMovement->InitialSpeed = 3000.f;
-	ProjectileMovement->MaxSpeed = 3000.f;
 	ProjectileMovement->bRotationFollowsVelocity = true;
 	ProjectileMovement->bShouldBounce = true;
 
@@ -31,20 +27,16 @@ AGrapplingHookTestProjectile::AGrapplingHookTestProjectile()
 	InitialLifeSpan = 3.0f;
 }
 
+void AGrapplingHookTestProjectile::Init(const USceneComponent* dockPosition)
+{
+	DockPosition = dockPosition;
+}
+
 void AGrapplingHookTestProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
-	// Only add impulse and destroy projectile if we hit a physics
-	if ((OtherActor != NULL) && (OtherActor != this) && (OtherComp != NULL) && OtherComp->IsSimulatingPhysics())
-	{
-		CollisionComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		ProjectileMovement->StopMovementImmediately();
-		ProjectileMovement->ProjectileGravityScale = 0.f;
-		FVector hitLocation = Hit.ImpactPoint;
-		//SetActorLocation(hitLocation);
-		//OtherComp->AddImpulseAtLocation(GetVelocity() * 100.0f, GetActorLocation());
-
-		//Destroy();
-	}
+	CollisionComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	ProjectileMovement->StopMovementImmediately();
+	ProjectileMovement->ProjectileGravityScale = 0.f;
 }
 
 void AGrapplingHookTestProjectile::Tick(float DeltaTime)
@@ -107,15 +99,23 @@ void AGrapplingHookTestProjectile::Docked_Enter()
 	CollisionComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	ProjectileMovement->StopMovementImmediately();
 	ProjectileMovement->ProjectileGravityScale = 0.f;
+	ProjectileMovement->UpdatedComponent = nullptr;
+	ProjectileMovement->InitialSpeed = 0.f;
+	ProjectileMovement->MaxSpeed = 0.f;
 
+	SetActorLocation(DockPosition->GetComponentLocation());
+	
 	StateStepVar = StateStep::ON_UPDATE;
 }
 
 void AGrapplingHookTestProjectile::Launching_Enter()
 {
-	CollisionComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	CollisionComp->BodyInstance.SetCollisionProfileName("Projectile");
 	ProjectileMovement->AddForce(GetActorForwardVector() * ProjectileSpeed);
 	ProjectileMovement->ProjectileGravityScale = 1.f;
+	ProjectileMovement->UpdatedComponent = CollisionComp;
+	ProjectileMovement->InitialSpeed = ProjectileSpeed;
+	ProjectileMovement->MaxSpeed = ProjectileSpeed;
 	
 	StateStepVar = StateStep::ON_UPDATE;
 }

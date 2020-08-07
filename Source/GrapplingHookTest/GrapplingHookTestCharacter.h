@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "GrapplingHookTestProjectile.h"
 #include "GrapplingHookTestCharacter.generated.h"
 
 class UInputComponent;
@@ -28,6 +29,8 @@ class AGrapplingHookTestCharacter : public ACharacter
 	/** First person camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 		class UCameraComponent* FirstPersonCameraComponent;
+
+	class AGrapplingHookTestProjectile* Projectile;
 
 public:
 	AGrapplingHookTestCharacter();

@@ -1,7 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "GrapplingHookTestCharacter.h"
-#include "GrapplingHookTestProjectile.h"
 #include "Animation/AnimInstance.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -78,7 +77,8 @@ void AGrapplingHookTestCharacter::BeginPlay()
 			const FVector SpawnLocation = ((MuzzleLocation != nullptr) ? MuzzleLocation->GetComponentLocation() : GetActorLocation()) + SpawnRotation.RotateVector(GunOffset);
 
 			// spawn the projectile at the muzzle
-			World->SpawnActor<AGrapplingHookTestProjectile>(ProjectileClass, SpawnLocation, SpawnRotation);
+			Projectile = World->SpawnActor<AGrapplingHookTestProjectile>(ProjectileClass, SpawnLocation, SpawnRotation);
+			Projectile->Init(MuzzleLocation);
 		}
 	}
 }

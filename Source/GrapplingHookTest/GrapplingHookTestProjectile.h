@@ -19,10 +19,13 @@ class AGrapplingHookTestProjectile : public AActor
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
 	class UProjectileMovementComponent* ProjectileMovement;
 
-	float ProjectileSpeed;
+	float ProjectileSpeed = 3000.f;
+	const USceneComponent* DockPosition;
 
 public:
 	AGrapplingHookTestProjectile();
+
+	void Init(const USceneComponent* dockPosition);
 
 	/** called when projectile hits something */
 	UFUNCTION()
