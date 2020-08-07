@@ -1,10 +1,10 @@
-// Copyright 1998-2018 Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "GrapplingHookTestProjectile.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Components/SphereComponent.h"
 
-AGrapplingHookTestProjectile::AGrapplingHookTestProjectile() 
+AGrapplingHookTestProjectile::AGrapplingHookTestProjectile()
 {
 	// Use a sphere as a simple collision representation
 	CollisionComp = CreateDefaultSubobject<USphereComponent>(TEXT("SphereComp"));
@@ -22,35 +22,100 @@ AGrapplingHookTestProjectile::AGrapplingHookTestProjectile()
 	// Use a ProjectileMovementComponent to govern this projectile's movement
 	ProjectileMovement = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileComp"));
 	ProjectileMovement->UpdatedComponent = CollisionComp;
-	ProjectileMovement->ProjectileGravityScale = 0.f;
-	ProjectileMovement->Velocity = FVector::ZeroVector;
+	ProjectileMovement->InitialSpeed = 3000.f;
+	ProjectileMovement->MaxSpeed = 3000.f;
 	ProjectileMovement->bRotationFollowsVelocity = true;
 	ProjectileMovement->bShouldBounce = true;
-	//ProjectileMovement->InitialSpeed = 0.f;
-	//ProjectileMovement->MaxSpeed = 0.f;
 
 	// Die after 3 seconds by default
-	InitialLifeSpan = -1.0f;
+	InitialLifeSpan = 3.0f;
 }
 
 void AGrapplingHookTestProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
 	// Only add impulse and destroy projectile if we hit a physics
-	if (!IsStuck && (OtherActor != NULL) && (OtherActor != this) && (OtherComp != NULL))
+	if ((OtherActor != NULL) && (OtherActor != this) && (OtherComp != NULL) && OtherComp->IsSimulatingPhysics())
 	{
-		if(OtherComp->IsSimulatingPhysics())
-			OtherComp->AddImpulseAtLocation(GetVelocity() * 100.0f, GetActorLocation());
-
-		this->SetActorLocation(Hit.ImpactPoint);
+		CollisionComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		ProjectileMovement->StopMovementImmediately();
-		this->AttachToActor(OtherActor, FAttachmentTransformRules::KeepWorldTransform);
+		ProjectileMovement->ProjectileGravityScale = 0.f;
+		FVector hitLocation = Hit.ImpactPoint;
+		//SetActorLocation(hitLocation);
+		//OtherComp->AddImpulseAtLocation(GetVelocity() * 100.0f, GetActorLocation());
 
-		IsStuck = true;
+		//Destroy();
 	}
 }
 
-void AGrapplingHookTestProjectile::Fire(FVector direction)
+void AGrapplingHookTestProjectile::Tick(float DeltaTime)
 {
-	ProjectileMovement->Velocity = direction * 3000.f;
+	Update();
+}
+
+void AGrapplingHookTestProjectile::Update()
+{
+	if (ProjectileStateVar == ProjectileState::DOCKED)
+	{
+		if (StateStepVar == StateStep::ON_ENTER) {
+			Docked_Enter();
+		}
+		if (StateStepVar == StateStep::ON_UPDATE) {
+			//Docked_Update();
+		}
+	}
+
+	if (ProjectileStateVar == ProjectileState::LAUNCHING)
+	{
+		if (StateStepVar == StateStep::ON_ENTER) {
+			Docked_Enter();
+		}
+		if (StateStepVar == StateStep::ON_UPDATE) {
+			//Docked_Update();
+		}
+	}
+}
+
+void AGrapplingHookTestProjectile::SetProjectileState(ProjectileState newState)
+{
+	// Append any GameStates you add to this example to this switch statement...
+	switch (ProjectileStateVar)
+	{
+	case ProjectileState::DOCKED:
+		//Docked_Exit();
+		break;
+	case ProjectileState::LAUNCHING:
+		//Launching_Exit();
+		break;
+	case ProjectileState::RETRACTING:
+		//Retracting_Exit();
+		break;
+	case ProjectileState::HOOKED:
+		//Hooked_Exit();
+		break;
+	default:
+		UE_LOG(LogTemp, Error, TEXT("Unexpected state has not been implemented!"), newState);
+		return;
+	}
+
+	// Set new GameStates state and begin OnEnter of that state
+	ProjectileStateVar = newState;
+	StateStepVar = StateStep::ON_ENTER;
+}
+
+void AGrapplingHookTestProjectile::Docked_Enter()
+{
+	CollisionComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	ProjectileMovement->StopMovementImmediately();
+	ProjectileMovement->ProjectileGravityScale = 0.f;
+
+	StateStepVar = StateStep::ON_UPDATE;
+}
+
+void AGrapplingHookTestProjectile::Launching_Enter()
+{
+	CollisionComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	ProjectileMovement->AddForce(GetActorForwardVector() * ProjectileSpeed);
 	ProjectileMovement->ProjectileGravityScale = 1.f;
+	
+	StateStepVar = StateStep::ON_UPDATE;
 }
