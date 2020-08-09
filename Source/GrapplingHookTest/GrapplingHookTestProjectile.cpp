@@ -6,6 +6,9 @@
 
 AGrapplingHookTestProjectile::AGrapplingHookTestProjectile()
 {
+	PrimaryActorTick.bCanEverTick = true;
+	SetActorTickEnabled(true);
+	
 	// Use a sphere as a simple collision representation
 	CollisionComp = CreateDefaultSubobject<USphereComponent>(TEXT("SphereComp"));
 	CollisionComp->InitSphereRadius(5.0f);
@@ -20,23 +23,26 @@ AGrapplingHookTestProjectile::AGrapplingHookTestProjectile()
 
 	// Use a ProjectileMovementComponent to govern this projectile's movement
 	ProjectileMovement = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileComp"));
+	ProjectileMovement->UpdatedComponent = CollisionComp;
 	ProjectileMovement->bRotationFollowsVelocity = true;
 	ProjectileMovement->bShouldBounce = true;
 
-	// Die after 3 seconds by default
-	InitialLifeSpan = 3.0f;
+	SetProjectileState(ProjectileState::DOCKED);
 }
 
-void AGrapplingHookTestProjectile::Init(const USceneComponent* dockPosition)
+void AGrapplingHookTestProjectile::Init(USceneComponent* dockPosition)
 {
 	DockPosition = dockPosition;
 }
 
+void AGrapplingHookTestProjectile::Fire()
+{
+	SetProjectileState(ProjectileState::LAUNCHING);
+}
+
 void AGrapplingHookTestProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
-	CollisionComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	ProjectileMovement->StopMovementImmediately();
-	ProjectileMovement->ProjectileGravityScale = 0.f;
+	SetProjectileState(ProjectileState::HOOKED);
 }
 
 void AGrapplingHookTestProjectile::Tick(float DeltaTime)
@@ -59,10 +65,30 @@ void AGrapplingHookTestProjectile::Update()
 	if (ProjectileStateVar == ProjectileState::LAUNCHING)
 	{
 		if (StateStepVar == StateStep::ON_ENTER) {
-			Docked_Enter();
+			Launching_Enter();
 		}
 		if (StateStepVar == StateStep::ON_UPDATE) {
 			//Docked_Update();
+		}
+	}
+
+	if (ProjectileStateVar == ProjectileState::RETRACTING)
+	{
+		if (StateStepVar == StateStep::ON_ENTER) {
+			Retracting_Enter();
+		}
+		if (StateStepVar == StateStep::ON_UPDATE) {
+			Retracting_Update();
+		}
+	}
+
+	if (ProjectileStateVar == ProjectileState::HOOKED)
+	{
+		if (StateStepVar == StateStep::ON_ENTER) {
+			Hooked_Enter();
+		}
+		if (StateStepVar == StateStep::ON_UPDATE) {
+			//Retracting_Update();
 		}
 	}
 }
@@ -97,10 +123,10 @@ void AGrapplingHookTestProjectile::SetProjectileState(ProjectileState newState)
 void AGrapplingHookTestProjectile::Docked_Enter()
 {
 	CollisionComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	CollisionComp->SetEnableGravity(false);
+	AttachToComponent(DockPosition, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
 	ProjectileMovement->StopMovementImmediately();
 	ProjectileMovement->ProjectileGravityScale = 0.f;
-	ProjectileMovement->UpdatedComponent = nullptr;
-	ProjectileMovement->InitialSpeed = 0.f;
 	ProjectileMovement->MaxSpeed = 0.f;
 
 	SetActorLocation(DockPosition->GetComponentLocation());
@@ -110,12 +136,39 @@ void AGrapplingHookTestProjectile::Docked_Enter()
 
 void AGrapplingHookTestProjectile::Launching_Enter()
 {
-	CollisionComp->BodyInstance.SetCollisionProfileName("Projectile");
-	ProjectileMovement->AddForce(GetActorForwardVector() * ProjectileSpeed);
+	CollisionComp->SetCollisionProfileName("Projectile");
+	CollisionComp->SetEnableGravity(true);
+	DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
 	ProjectileMovement->ProjectileGravityScale = 1.f;
-	ProjectileMovement->UpdatedComponent = CollisionComp;
-	ProjectileMovement->InitialSpeed = ProjectileSpeed;
 	ProjectileMovement->MaxSpeed = ProjectileSpeed;
+
+	ProjectileMovement->Velocity = GetActorRightVector() * ProjectileSpeed;
 	
+	StateStepVar = StateStep::ON_UPDATE;
+}
+
+void AGrapplingHookTestProjectile::Retracting_Enter()
+{
+	CollisionComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	CollisionComp->SetEnableGravity(false);
+	ProjectileMovement->StopMovementImmediately();
+	ProjectileMovement->ProjectileGravityScale = 0.f;
+	ProjectileMovement->MaxSpeed = 0.f;
+
+	StateStepVar = StateStep::ON_UPDATE;
+}
+
+void AGrapplingHookTestProjectile::Retracting_Update()
+{
+}
+
+void AGrapplingHookTestProjectile::Hooked_Enter()
+{
+	CollisionComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	CollisionComp->SetEnableGravity(false);
+	ProjectileMovement->StopMovementImmediately();
+	ProjectileMovement->ProjectileGravityScale = 0.f;
+	ProjectileMovement->MaxSpeed = 0.f;
+
 	StateStepVar = StateStep::ON_UPDATE;
 }

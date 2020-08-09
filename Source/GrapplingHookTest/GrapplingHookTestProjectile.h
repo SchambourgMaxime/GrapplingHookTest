@@ -20,17 +20,20 @@ class AGrapplingHookTestProjectile : public AActor
 	class UProjectileMovementComponent* ProjectileMovement;
 
 	float ProjectileSpeed = 3000.f;
-	const USceneComponent* DockPosition;
+	USceneComponent* DockPosition;
 
 public:
 	AGrapplingHookTestProjectile();
 
-	void Init(const USceneComponent* dockPosition);
+	void Init(USceneComponent* dockPosition);
+
+	void Fire();
 
 	/** called when projectile hits something */
 	UFUNCTION()
 	void OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
 
+	UFUNCTION()
 	virtual void Tick(float DeltaTime) override;
 
 	/** Returns CollisionComp subobject **/

@@ -114,20 +114,23 @@ void AGrapplingHookTestCharacter::SetupPlayerInputComponent(class UInputComponen
 void AGrapplingHookTestCharacter::OnFire()
 {
 	// try and fire a projectile
-
+	if (Projectile != nullptr)
+	{
+		Projectile->Fire();
+	}
 
 	// try and play the sound if specified
-	if (FireSound != NULL)
+	if (FireSound != nullptr)
 	{
 		UGameplayStatics::PlaySoundAtLocation(this, FireSound, GetActorLocation());
 	}
 
 	// try and play a firing animation if specified
-	if (FireAnimation != NULL)
+	if (FireAnimation != nullptr)
 	{
 		// Get the animation object for the arms mesh
 		UAnimInstance* AnimInstance = SkeletalMesh->GetAnimInstance();
-		if (AnimInstance != NULL)
+		if (AnimInstance != nullptr)
 		{
 			AnimInstance->Montage_Play(FireAnimation, 1.f);
 		}
