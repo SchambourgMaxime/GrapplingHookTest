@@ -97,6 +97,7 @@ void AGrapplingHookTestCharacter::SetupPlayerInputComponent(class UInputComponen
 
 	// Bind fire event
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &AGrapplingHookTestCharacter::OnFire);
+	PlayerInputComponent->BindAction("Retract", IE_Pressed, this, &AGrapplingHookTestCharacter::OnRetract);
 
 	// Bind movement events
 	PlayerInputComponent->BindAxis("MoveForward", this, &AGrapplingHookTestCharacter::MoveForward);
@@ -134,6 +135,15 @@ void AGrapplingHookTestCharacter::OnFire()
 		{
 			AnimInstance->Montage_Play(FireAnimation, 1.f);
 		}
+	}
+}
+
+void AGrapplingHookTestCharacter::OnRetract()
+{
+	// try and fire the projectile
+	if (Projectile != nullptr)
+	{
+		Projectile->Retract();
 	}
 }
 

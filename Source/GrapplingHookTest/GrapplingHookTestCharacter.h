@@ -72,6 +72,7 @@ protected:
 
 	/** Fires a projectile. */
 	void OnFire();
+	void OnRetract();
 
 	/** Handles moving forward/backward */
 	void MoveForward(float Val);

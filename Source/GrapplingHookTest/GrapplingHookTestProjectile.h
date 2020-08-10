@@ -22,12 +22,17 @@ class AGrapplingHookTestProjectile : public AActor
 	float ProjectileSpeed = 3000.f;
 	USceneComponent* DockPosition;
 
+	UPROPERTY(EditDefaultsOnly, Category = Projectile)
+	float retractingSpeedinCMPerSec = 300.f;
+	float RetractingToDockingDistance = 30.f;
+
 public:
 	AGrapplingHookTestProjectile();
 
 	void Init(USceneComponent* dockPosition);
 
 	void Fire();
+	void Retract();
 
 	/** called when projectile hits something */
 	UFUNCTION()
@@ -48,7 +53,7 @@ private:
 	enum StateStep { ON_ENTER, ON_UPDATE };
 	StateStep StateStepVar;
 
-	void Update();
+	void Update(float DeltaTime);
 	void SetProjectileState(ProjectileState newState);
 	
 	void Docked_Enter();
@@ -60,7 +65,7 @@ private:
 	void Launching_Exit();
 
 	void Retracting_Enter();
-	void Retracting_Update();
+	void Retracting_Update(float DeltaTime);
 	void Retracting_Exit();
 
 	void Hooked_Enter();

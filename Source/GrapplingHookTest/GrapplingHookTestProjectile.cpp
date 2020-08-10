@@ -37,20 +37,28 @@ void AGrapplingHookTestProjectile::Init(USceneComponent* dockPosition)
 
 void AGrapplingHookTestProjectile::Fire()
 {
-	SetProjectileState(ProjectileState::LAUNCHING);
+	if(ProjectileStateVar == ProjectileState::DOCKED)
+		SetProjectileState(ProjectileState::LAUNCHING);
+}
+
+void AGrapplingHookTestProjectile::Retract()
+{
+	if (ProjectileStateVar == ProjectileState::LAUNCHING || ProjectileStateVar == ProjectileState::HOOKED)
+		SetProjectileState(ProjectileState::RETRACTING);
 }
 
 void AGrapplingHookTestProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
-	SetProjectileState(ProjectileState::HOOKED);
+	if (ProjectileStateVar == ProjectileState::LAUNCHING)
+		SetProjectileState(ProjectileState::HOOKED);
 }
 
 void AGrapplingHookTestProjectile::Tick(float DeltaTime)
 {
-	Update();
+	Update(DeltaTime);
 }
 
-void AGrapplingHookTestProjectile::Update()
+void AGrapplingHookTestProjectile::Update(float DeltaTime)
 {
 	if (ProjectileStateVar == ProjectileState::DOCKED)
 	{
@@ -78,7 +86,7 @@ void AGrapplingHookTestProjectile::Update()
 			Retracting_Enter();
 		}
 		if (StateStepVar == StateStep::ON_UPDATE) {
-			Retracting_Update();
+			Retracting_Update(DeltaTime);
 		}
 	}
 
@@ -88,7 +96,7 @@ void AGrapplingHookTestProjectile::Update()
 			Hooked_Enter();
 		}
 		if (StateStepVar == StateStep::ON_UPDATE) {
-			//Retracting_Update();
+			//Hooked_Update();
 		}
 	}
 }
@@ -149,17 +157,26 @@ void AGrapplingHookTestProjectile::Launching_Enter()
 
 void AGrapplingHookTestProjectile::Retracting_Enter()
 {
-	CollisionComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	CollisionComp->SetEnableGravity(false);
-	ProjectileMovement->StopMovementImmediately();
-	ProjectileMovement->ProjectileGravityScale = 0.f;
-	ProjectileMovement->MaxSpeed = 0.f;
-
 	StateStepVar = StateStep::ON_UPDATE;
 }
 
-void AGrapplingHookTestProjectile::Retracting_Update()
+void AGrapplingHookTestProjectile::Retracting_Update(float DeltaTime)
 {
+	FVector newPosition = GetActorLocation();
+	FVector direction = (DockPosition->GetComponentLocation() - GetActorLocation()).GetSafeNormal();
+
+	newPosition += direction * (retractingSpeedinCMPerSec * DeltaTime);
+	SetActorLocation(newPosition);
+	
+	float distanceToDockingSquared = FVector::DistSquared(DockPosition->GetComponentLocation(), GetActorLocation());
+	
+	if (distanceToDockingSquared <= (RetractingToDockingDistance * RetractingToDockingDistance))
+	{
+		SetProjectileState(ProjectileState::DOCKED);
+		return;
+	}
+	
+	StateStepVar = StateStep::ON_UPDATE;
 }
 
 void AGrapplingHookTestProjectile::Hooked_Enter()
