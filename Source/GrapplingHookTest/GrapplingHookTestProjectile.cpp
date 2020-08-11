@@ -1,6 +1,8 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "GrapplingHookTestProjectile.h"
+
+#include "DrawDebugHelpers.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Components/SphereComponent.h"
 
@@ -18,6 +20,11 @@ AGrapplingHookTestProjectile::AGrapplingHookTestProjectile()
 	CollisionComp->SetWalkableSlopeOverride(FWalkableSlopeOverride(WalkableSlope_Unwalkable, 0.f));
 	CollisionComp->CanCharacterStepUpOn = ECB_No;
 
+	Rope = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Rope"));
+	Rope->SetupAttachment(CollisionComp);
+
+	Rope->SetWorldScale3D(FVector(0.f, 0.f, 0.f));
+	
 	// Set as root component
 	RootComponent = CollisionComp;
 
@@ -33,6 +40,14 @@ AGrapplingHookTestProjectile::AGrapplingHookTestProjectile()
 void AGrapplingHookTestProjectile::Init(USceneComponent* dockPosition)
 {
 	DockPosition = dockPosition;
+
+	UStaticMesh* staticMesh = Rope->GetStaticMesh();
+	if (staticMesh)
+	{
+		float meshDiameterX = staticMesh->GetBoundingBox().GetExtent().X;
+		float meshDiameterY = staticMesh->GetBoundingBox().GetExtent().Y;
+		Rope->SetWorldScale3D(FVector(RopeDiameter / meshDiameterX, RopeDiameter / meshDiameterY, 0.f));
+	}
 }
 
 void AGrapplingHookTestProjectile::Fire()
@@ -76,7 +91,7 @@ void AGrapplingHookTestProjectile::Update(float DeltaTime)
 			Launching_Enter();
 		}
 		if (StateStepVar == StateStep::ON_UPDATE) {
-			//Docked_Update();
+			Launching_Update();
 		}
 	}
 
@@ -96,9 +111,22 @@ void AGrapplingHookTestProjectile::Update(float DeltaTime)
 			Hooked_Enter();
 		}
 		if (StateStepVar == StateStep::ON_UPDATE) {
-			//Hooked_Update();
+			Hooked_Update();
 		}
 	}
+}
+
+void AGrapplingHookTestProjectile::UpdateRope()
+{
+	float newRopeHeight = (GetActorLocation() - DockPosition->GetComponentLocation()).Size();
+	FVector previousScale = Rope->GetComponentScale();
+	Rope->SetWorldScale3D(FVector(previousScale.X, previousScale.Y, newRopeHeight / Rope->GetStaticMesh()->GetBoundingBox().GetExtent().Z));
+	FVector newLocation = DockPosition->GetComponentLocation();
+	DrawDebugSphere(GetWorld(), CollisionComp->GetComponentLocation(), 10.f, 20, FColor::Blue);
+	DrawDebugSphere(GetWorld(), DockPosition->GetComponentLocation(), 10.f, 20, FColor::Red);
+	Rope->SetWorldLocation(newLocation);
+	
+	//Rope->SetWorldRotation();
 }
 
 void AGrapplingHookTestProjectile::SetProjectileState(ProjectileState newState)
@@ -138,6 +166,8 @@ void AGrapplingHookTestProjectile::Docked_Enter()
 	ProjectileMovement->MaxSpeed = 0.f;
 
 	SetActorLocation(DockPosition->GetComponentLocation());
+
+	Rope->SetVisibility(false);
 	
 	StateStepVar = StateStep::ON_UPDATE;
 }
@@ -151,12 +181,25 @@ void AGrapplingHookTestProjectile::Launching_Enter()
 	ProjectileMovement->MaxSpeed = ProjectileSpeed;
 
 	ProjectileMovement->Velocity = GetActorRightVector() * ProjectileSpeed;
+
+	Rope->SetVisibility(true);
 	
 	StateStepVar = StateStep::ON_UPDATE;
 }
 
+void AGrapplingHookTestProjectile::Launching_Update()
+{
+	UpdateRope();
+}
+
 void AGrapplingHookTestProjectile::Retracting_Enter()
 {
+	CollisionComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	CollisionComp->SetEnableGravity(false);
+	ProjectileMovement->StopMovementImmediately();
+	ProjectileMovement->ProjectileGravityScale = 0.f;
+	ProjectileMovement->MaxSpeed = 0.f;
+	
 	StateStepVar = StateStep::ON_UPDATE;
 }
 
@@ -176,7 +219,7 @@ void AGrapplingHookTestProjectile::Retracting_Update(float DeltaTime)
 		return;
 	}
 	
-	StateStepVar = StateStep::ON_UPDATE;
+	UpdateRope();
 }
 
 void AGrapplingHookTestProjectile::Hooked_Enter()
@@ -188,4 +231,9 @@ void AGrapplingHookTestProjectile::Hooked_Enter()
 	ProjectileMovement->MaxSpeed = 0.f;
 
 	StateStepVar = StateStep::ON_UPDATE;
+}
+
+void AGrapplingHookTestProjectile::Hooked_Update()
+{
+	UpdateRope();
 }

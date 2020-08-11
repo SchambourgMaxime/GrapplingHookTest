@@ -15,6 +15,12 @@ class AGrapplingHookTestProjectile : public AActor
 	UPROPERTY(VisibleDefaultsOnly, Category = Projectile)
 	class USphereComponent* CollisionComp;
 
+	UPROPERTY(VisibleDefaultsOnly, Category = Projectile)
+	class UStaticMeshComponent* Rope;
+
+	UPROPERTY(EditDefaultsOnly, Category = Projectile)
+	float RopeDiameter = 1.f;
+
 	/** Projectile movement component */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
 	class UProjectileMovementComponent* ProjectileMovement;
@@ -54,6 +60,7 @@ private:
 	StateStep StateStepVar;
 
 	void Update(float DeltaTime);
+	void UpdateRope();
 	void SetProjectileState(ProjectileState newState);
 	
 	void Docked_Enter();
