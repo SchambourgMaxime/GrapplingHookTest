@@ -118,15 +118,20 @@ void AGrapplingHookTestProjectile::Update(float DeltaTime)
 
 void AGrapplingHookTestProjectile::UpdateRope()
 {
-	float newRopeHeight = (GetActorLocation() - DockPosition->GetComponentLocation()).Size();
-	FVector previousScale = Rope->GetComponentScale();
-	Rope->SetWorldScale3D(FVector(previousScale.X, previousScale.Y, newRopeHeight / Rope->GetStaticMesh()->GetBoundingBox().GetExtent().Z));
-	FVector newLocation = DockPosition->GetComponentLocation();
-	DrawDebugSphere(GetWorld(), CollisionComp->GetComponentLocation(), 10.f, 20, FColor::Blue);
-	DrawDebugSphere(GetWorld(), DockPosition->GetComponentLocation(), 10.f, 20, FColor::Red);
-	Rope->SetWorldLocation(newLocation);
+	CollisionComp->SetWorldRotation(FRotator::ZeroRotator);
 	
-	//Rope->SetWorldRotation();
+	// Scale
+	float newRopeHeight = (CollisionComp->GetComponentLocation() - DockPosition->GetComponentLocation()).Size();
+	FVector previousScale = Rope->GetComponentScale();
+	Rope->SetWorldScale3D(FVector(previousScale.X, previousScale.Y, (newRopeHeight / 2) / Rope->GetStaticMesh()->GetBoundingBox().GetExtent().Z));
+
+	// Location
+	FVector newLocation = DockPosition->GetComponentLocation();
+	Rope->SetWorldLocation(newLocation);
+
+	// Rotation
+	Rope->SetWorldRotation((CollisionComp->GetComponentLocation() - DockPosition->GetComponentLocation()).Rotation());
+	Rope->AddRelativeRotation(FRotator(-90.f, 0.f, 0.f));
 }
 
 void AGrapplingHookTestProjectile::SetProjectileState(ProjectileState newState)
