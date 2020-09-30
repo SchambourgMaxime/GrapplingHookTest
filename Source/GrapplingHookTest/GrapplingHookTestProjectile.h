@@ -4,7 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Components/SphereComponent.h"
 #include "GrapplingHookTestProjectile.generated.h"
+
+enum class ProjectileState { DOCKED, LAUNCHING, RETRACTING, HOOKED };
 
 UCLASS(config = Game)
 class AGrapplingHookTestProjectile : public AActor
@@ -37,6 +40,10 @@ public:
 
 	void Init(USceneComponent* dockPosition);
 
+	ProjectileState GetProjectileState();
+
+	FVector getHookPosition() { return CollisionComp->GetComponentLocation(); }
+
 	void Fire();
 	void Retract();
 
@@ -51,9 +58,12 @@ public:
 	FORCEINLINE class USphereComponent* GetCollisionComp() const { return CollisionComp; }
 	/** Returns ProjectileMovement subobject **/
 	FORCEINLINE class UProjectileMovementComponent* GetProjectileMovement() const { return ProjectileMovement; }
+	/** Returns Projectile's rope's length **/
+	FORCEINLINE FVector GetRopeVector() const { return CollisionComp->GetComponentLocation() - DockPosition->GetComponentLocation(); }
+	/** Returns Projectile's rope's length **/
+	FORCEINLINE float GetRopeLength() const { return (CollisionComp->GetComponentLocation() - DockPosition->GetComponentLocation()).Size(); }
 
 private:
-	enum class ProjectileState { DOCKED, LAUNCHING, RETRACTING, HOOKED };
 	ProjectileState ProjectileStateVar;
 
 	enum StateStep { ON_ENTER, ON_UPDATE };
@@ -61,8 +71,9 @@ private:
 
 	void Update(float DeltaTime);
 	void UpdateRope();
-	void SetProjectileState(ProjectileState newState);
 	
+	void SetProjectileState(ProjectileState newState);
+
 	void Docked_Enter();
 	//void Docked_Update();
 	//void Docked_Exit();

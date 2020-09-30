@@ -5,39 +5,56 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "GrapplingHookTestProjectile.h"
+#include "Pendulum.h"
+
 #include "GrapplingHookTestCharacter.generated.h"
 
 class UInputComponent;
+
+enum class CharacterState { GROUNDED, JUMPING, SWINGING };
 
 UCLASS(config = Game)
 class AGrapplingHookTestCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
-		/** Pawn mesh: 1st person view (arms; seen only by self) */
-		UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
-		class USkeletalMeshComponent* SkeletalMesh;
+	/** Pawn mesh: 1st person view (arms; seen only by self) */
+	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
+	class USkeletalMeshComponent* SkeletalMesh;
 
 	/** Gun mesh: 1st person view (seen only by self) */
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
-		class USkeletalMeshComponent* Gun;
+	class USkeletalMeshComponent* Gun;
 
 	/** Location on gun mesh where projectiles should spawn. */
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
-		class USceneComponent* MuzzleLocation;
+	class USceneComponent* MuzzleLocation;
 
 	/** First person camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
-		class UCameraComponent* FirstPersonCameraComponent;
+	class UCameraComponent* FirstPersonCameraComponent;
 
 	UPROPERTY(VisibleDefaultsOnly, Category = Projectile)
 	class AGrapplingHookTestProjectile* Projectile;
+
+	CharacterState CharacterStateVar = CharacterState::GROUNDED;
+
+	enum StateStep { ON_ENTER, ON_UPDATE };
+	StateStep StateStepVar;
+
+	Pendulum PendulumVar;
+
+	void Update(float DeltaTime);
+
+	void SetCharacterState(CharacterState newState);
 
 public:
 	AGrapplingHookTestCharacter();
 
 protected:
 	virtual void BeginPlay();
+	UFUNCTION()
+	virtual void Tick(float DeltaTime) override;
 
 public:
 	/** Base turn rate, in deg/sec. Other scaling may affect final turn rate. */
@@ -99,9 +116,19 @@ protected:
 
 public:
 	/** Returns Mesh1P subobject **/
-	FORCEINLINE class USkeletalMeshComponent* GetSkeletalMesh() const { return SkeletalMesh; }
+	FORCEINLINE class USkeletalMeshComponent* GetSkeletalMesh() const { return SkeletalMesh; }\
 	/** Returns FirstPersonCameraComponent subobject **/
 	FORCEINLINE class UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
+
+private:
+
+	void Grounded_Enter();
+	void Grounded_Update();
+	void Grounded_Exit();
+
+	FORCENOINLINE void Swinging_Enter();
+	void Swinging_Update(float deltaTime);
+	void Swinging_Exit();
 
 };
 

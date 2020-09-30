@@ -2,9 +2,7 @@
 
 #include "GrapplingHookTestProjectile.h"
 
-#include "DrawDebugHelpers.h"
 #include "GameFramework/ProjectileMovementComponent.h"
-#include "Components/SphereComponent.h"
 
 AGrapplingHookTestProjectile::AGrapplingHookTestProjectile()
 {
@@ -159,6 +157,11 @@ void AGrapplingHookTestProjectile::SetProjectileState(ProjectileState newState)
 	// Set new GameStates state and begin OnEnter of that state
 	ProjectileStateVar = newState;
 	StateStepVar = StateStep::ON_ENTER;
+}
+
+ProjectileState AGrapplingHookTestProjectile::GetProjectileState()
+{
+	return ProjectileStateVar;
 }
 
 void AGrapplingHookTestProjectile::Docked_Enter()

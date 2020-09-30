@@ -6,10 +6,9 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
 #include "GameFramework/InputSettings.h"
-#include "HeadMountedDisplayFunctionLibrary.h"
 #include "Kismet/GameplayStatics.h"
 #include "MotionControllerComponent.h"
-#include "XRMotionControllerBase.h" // for FXRMotionControllerBase::RightHandSourceId
+#include "GameFramework/CharacterMovementComponent.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogFPChar, Warning, All);
 
@@ -18,6 +17,9 @@ DEFINE_LOG_CATEGORY_STATIC(LogFPChar, Warning, All);
 
 AGrapplingHookTestCharacter::AGrapplingHookTestCharacter()
 {
+	PrimaryActorTick.bCanEverTick = true;
+	SetActorTickEnabled(true);
+	
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(55.f, 96.0f);
 
@@ -54,6 +56,8 @@ AGrapplingHookTestCharacter::AGrapplingHookTestCharacter()
 
 	// Default offset from the character location for projectiles to spawn
 	GunOffset = FVector(100.0f, 0.0f, 10.0f);
+
+	SetCharacterState(CharacterState::GROUNDED);
 }
 
 void AGrapplingHookTestCharacter::BeginPlay()
@@ -83,6 +87,55 @@ void AGrapplingHookTestCharacter::BeginPlay()
 	}
 }
 
+void AGrapplingHookTestCharacter::Tick(float DeltaTime)
+{
+	Update(DeltaTime);
+}
+
+void AGrapplingHookTestCharacter::Update(float DeltaTime)
+{
+	if (CharacterStateVar == CharacterState::GROUNDED)
+	{
+		if (StateStepVar == StateStep::ON_ENTER) {
+			Grounded_Enter();
+		}
+		if (StateStepVar == StateStep::ON_UPDATE) {
+			Grounded_Update();
+		}
+	}
+
+	if (CharacterStateVar == CharacterState::SWINGING)
+	{
+		if (StateStepVar == StateStep::ON_ENTER) {
+			Swinging_Enter(DeltaTime);
+		}
+		if (StateStepVar == StateStep::ON_UPDATE) {
+			Swinging_Update(DeltaTime);
+		}
+	}
+}
+
+void AGrapplingHookTestCharacter::SetCharacterState(CharacterState newState)
+{
+	// Append any GameStates you add to this example to this switch statement...
+	switch (CharacterStateVar)
+	{
+	case CharacterState::GROUNDED:
+		//Docked_Exit();
+		break;
+	case CharacterState::SWINGING:
+		//Launching_Exit();
+		break;
+	default:
+		UE_LOG(LogTemp, Error, TEXT("Unexpected state has not been implemented!"), newState);
+		return;
+	}
+
+	// Set new GameStates state and begin OnEnter of that state
+	CharacterStateVar = newState;
+	StateStepVar = StateStep::ON_ENTER;
+}
+
 //////////////////////////////////////////////////////////////////////////
 // Input
 
@@ -110,6 +163,50 @@ void AGrapplingHookTestCharacter::SetupPlayerInputComponent(class UInputComponen
 	PlayerInputComponent->BindAxis("TurnRate", this, &AGrapplingHookTestCharacter::TurnAtRate);
 	PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
 	PlayerInputComponent->BindAxis("LookUpRate", this, &AGrapplingHookTestCharacter::LookUpAtRate);
+}
+
+void AGrapplingHookTestCharacter::Grounded_Enter()
+{
+	GetCharacterMovement()->GravityScale = 1.f;
+	
+	StateStepVar = StateStep::ON_UPDATE;
+}
+
+void AGrapplingHookTestCharacter::Grounded_Update()
+{
+	if (Projectile->GetProjectileState() == ProjectileState::HOOKED)
+		SetCharacterState(CharacterState::SWINGING);
+}
+
+void AGrapplingHookTestCharacter::Swinging_Enter()
+{
+	GetCharacterMovement()->StopMovementImmediately();
+	GetCharacterMovement()->GravityScale = 0.f;
+
+	FVector  ropeVector = Projectile->GetRopeVector();
+	ropeVector.Normalize();
+	float startAngle = -FMath::Acos(ropeVector | GetActorUpVector());
+	FVector velocity = GetVelocity() * ;
+	FVector forwardVec = GetActorForwardVector();
+	float projectedVelToFVec = FVector::DotProduct(velocity, forwardVec);
+	FVector bottomTriangle = forwardVec * projectedVelToFVec;
+	FVector triangleOpposite = -ropeVector + bottomTriangle;
+	float angleWithLength = FVector::DotProduct(ropeVector, triangleOpposite);
+	float angleWithoutLength = angleWithLength / (ropeVector.Size() * triangleOpposite.Size());
+	float angle = FMath::Acos(angleWithoutLength);
+	//float startVelocity = FVector::DotProduct(GetVelocity(), GetActorForwardVector());
+	//startVelocity = FMath::Acos(FVector::DotProduct(ropeVector, GetActorForwardVector() * startVelocity)) / (ropeVector.Size() * (GetActorForwardVector() * startVelocity).Size());
+	PendulumVar = Pendulum(Projectile->GetCollisionComp()->GetComponentLocation(), angleWithoutLength, startAngle, Projectile->GetRopeLength(), GetWorld()->GetGravityZ(), ropeVector.X, ropeVector.Y);
+	
+	StateStepVar = StateStep::ON_UPDATE;
+}
+
+void AGrapplingHookTestCharacter::Swinging_Update(float deltaTime)
+{
+	GetCharacterMovement()->StopMovementImmediately();
+	PendulumVar.update(deltaTime);
+	
+	SetActorLocation(PendulumVar.GetPosition() /*+ MuzzleLocation->GetComponentLocation()*/);
 }
 
 void AGrapplingHookTestCharacter::OnFire()
